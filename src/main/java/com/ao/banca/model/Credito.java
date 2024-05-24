@@ -10,4 +10,6 @@ public class Credito {
     @Id
     String id;
     String nombreCredito;
+    Double montoCredito;
+    Double consumido;
 }
