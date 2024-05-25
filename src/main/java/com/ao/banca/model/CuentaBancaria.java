@@ -10,8 +10,9 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @Builder
 public class CuentaBancaria {
     @Id
-    String id;
-    String nombreCuentaBancaria;
-    Double montoCuentaBancaria;
-    String numeroCuentaBancaria;
+    private String nombreCuentaBancaria;
+    private Double montoCuentaBancaria;
+    private String numeroCuentaBancaria;
+    private String dniCliente;
+    private String rucEmpresa;
 }

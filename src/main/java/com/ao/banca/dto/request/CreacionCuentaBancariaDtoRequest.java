@@ -10,4 +10,6 @@ public class CreacionCuentaBancariaDtoRequest {
     private String nombre;
     private String apellido;
     private String nombreCuentaBancaria;
+    private String tipoCliente;
+    private String rucEmpresa;
 }

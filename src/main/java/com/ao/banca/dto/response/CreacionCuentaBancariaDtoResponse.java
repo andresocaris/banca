@@ -8,7 +8,6 @@ import lombok.Data;
 @Data
 @Builder
 public class CreacionCuentaBancariaDtoResponse {
-    public Cliente cliente;
-    public CuentaBancaria cuentaBancaria;
-    public String msg;
+    private Cliente cliente;
+    private CuentaBancaria cuentaBancaria;
 }

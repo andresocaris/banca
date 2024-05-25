@@ -1,13 +1,9 @@
-package com.ao.banca.model;
+package com.ao.banca.dto.request;
 
 import lombok.Data;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
 
-@Document
 @Data
-public class Credito {
-    @Id
+public class CreditoDto {
     private String id;
     private String tipoCredito;
     private String rucEmpresa;

@@ -4,5 +4,5 @@ import com.ao.banca.model.CuentaBancaria;
 import reactor.core.publisher.Mono;
 
 public interface CuentaBancariaService {
-    Mono<CuentaBancaria> creacionCuentaBancaria(String dni, String nombreCuentaBancaria);
+    Mono<CuentaBancaria> creacionCuentaBancaria(String dni, String nombreCuentaBancaria,String rucCliente);
 }
