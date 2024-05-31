@@ -6,12 +6,12 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 @Document
 @Data
-public class Credito {
+public class Credit {
     @Id
     private String id;
-    private String tipoCredito;
-    private String rucEmpresa;
+    private String creditType;
+    private String rucCompany;
     private String dni;
-    private Double consumido;
-    private Double montoCredito;
+    private Double consumed;
+    private Double creditAmount;
 }

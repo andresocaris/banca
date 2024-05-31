@@ -8,14 +8,14 @@ import java.util.List;
 @Data
 @Document
 @Builder
-public class Cliente {
+public class Client {
     @Id
     private String id;
-    private String nombre;
-    private String apellido;
+    private String firstName;
+    private String lastname;
     private String dni;
     private String rucEmpresa;
-    private String tipoCliente;
-    private List<CuentaBancaria> cuentasBancaria;
-    private List<Credito> creditos;
+    private String clientType;
+    private List<BankAccount> bankAccounts;
+    private List<Credit> credits;
 }
