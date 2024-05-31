@@ -145,8 +145,24 @@ public class ClienteServiceImpl implements ClienteService {
 
     @Override
     public Mono<ResponseEntity<Credito>> creacionCredito(Credito credito) {
+
+
+        Mono<Cliente> clientFoundByDni
+                = clienteRepository.findByDni(credito.getDni());
+
         return creditoRepository.save(credito)
-                .flatMap(creditoCreado ->  Mono.just(ResponseEntity.ok(creditoCreado)))
+                .flatMap(creditoCreado -> {
+                    clientFoundByDni.subscribe((cliente)-> {
+                        log.info(cliente.toString());
+                        if (cliente.getCreditos()==null){
+                            cliente.setCreditos(new ArrayList<>());
+                        }
+                        cliente.getCreditos().add(creditoCreado);
+                        clienteRepository.save(cliente).subscribe();
+
+                    });
+                    return Mono.just(ResponseEntity.ok(creditoCreado));
+                })
                 .onErrorResume(ex-> Mono.just(
                         ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build())
                 );
