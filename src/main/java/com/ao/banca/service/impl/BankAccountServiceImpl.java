@@ -22,19 +22,24 @@ public class BankAccountServiceImpl implements BankAccountService {
     @Override
     public Mono<BankAccount> createBankAccount(String dni, String bankAccountName, String rucClient) {
         return  generateValidBankAccountNumber()
-                .flatMap(createdBankAccountNumber-> {
-                    BankAccount bankAccount = BankAccount.builder()
-                            .bankAccountName(bankAccountName)
-                            .bankAccountAmount(0.0)
-                            .bankAccountNumber(createdBankAccountNumber)
-                            .dniClient(dni)
-                            .rucCompany(rucClient)
-                            .build();
-                    return Mono.just(bankAccount);
-                })
-                  .flatMap(bankAccountRepository::save)
-                  .doOnNext(bankAccountSaved -> log.info("cuentaBancariaCreada:"+bankAccountSaved));
+                .flatMap(createdBankAccountNumber->
+                    createBankAccountWithNumber(dni,bankAccountName,rucClient,createdBankAccountNumber)
+                )
+                .flatMap(bankAccountRepository::save)
+                .doOnNext(bankAccountSaved -> log.info("cuentaBancariaCreada:"+bankAccountSaved));
     }
+
+    private Mono<BankAccount> createBankAccountWithNumber(String dni, String bankAccountName, String rucClient, String createdBankAccountNumber) {
+        BankAccount bankAccount = BankAccount.builder()
+        .bankAccountName(bankAccountName)
+        .bankAccountAmount(0.0)
+        .bankAccountNumber(createdBankAccountNumber)
+        .dniClient(dni)
+        .rucCompany(rucClient)
+        .build();
+        return Mono.just(bankAccount);
+    }
+
     public  Mono<String> generateValidBankAccountNumber() {
        return Flux.range(0, Integer.MAX_VALUE)
                 .flatMap(number -> generateBankAccountNumber())

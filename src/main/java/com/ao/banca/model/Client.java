@@ -14,7 +14,7 @@ public class Client {
     private String firstName;
     private String lastname;
     private String dni;
-    private String rucEmpresa;
+    private String rucCompany;
     private String clientType;
     private List<BankAccount> bankAccounts;
     private List<Credit> credits;
