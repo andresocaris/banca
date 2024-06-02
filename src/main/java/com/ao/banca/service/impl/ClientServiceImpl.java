@@ -1,8 +1,10 @@
 package com.ao.banca.service.impl;
 
+import com.ao.banca.dto.ClientDto;
 import com.ao.banca.dto.request.BankAccountCreationRequestDto;
 import com.ao.banca.dto.request.CreditoDto;
 import com.ao.banca.dto.response.BankAccountCreationResponseDto;
+import com.ao.banca.exception.BadRequest;
 import com.ao.banca.model.Client;
 import com.ao.banca.model.Credit;
 import com.ao.banca.model.BankAccount;
@@ -12,6 +14,7 @@ import com.ao.banca.repository.CreditRepository;
 import com.ao.banca.service.ClientService;
 import com.ao.banca.service.BankAccountService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -20,12 +23,11 @@ import reactor.core.publisher.Mono;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 
 @Service
 @Slf4j
 public class ClientServiceImpl implements ClientService {
-    public static final String TIPO_CUENTA_PARA_SOLO_EMPRESAS="Cuenta Corriente";
+    public static final String TIPO_CUENTA_PARA_SOLO_EMPRESAS = "Cuenta Corriente";
     ClientRepository clientRepository;
     BankAccountRepository bankAccountRepository;
     BankAccountService bankAccountService;
@@ -44,22 +46,38 @@ public class ClientServiceImpl implements ClientService {
     }
 
     @Override
-    public Mono<Client> saveClient(Client client) {
-        return clientRepository.save(client);
+    public Mono<ClientDto> saveClient(ClientDto clientDto) {
+        Client client = new Client();
+        BeanUtils.copyProperties( clientDto,client);
+        Mono<Client> clientSaved =  clientRepository.save(client);
+        return clientSaved.flatMap(clientSaved1->{
+            ClientDto clientDtoCreated = new ClientDto();
+            BeanUtils.copyProperties( clientSaved1,clientDtoCreated);
+            return Mono.just(clientDtoCreated);
+        });
     }
 
     @Override
     public Mono<ResponseEntity<BankAccountCreationResponseDto>> createBankAccountByRequest(BankAccountCreationRequestDto bankAccountCreationRequestDto) {
-        Mono<Client> clientFoundByDni = clientRepository.findByDni(bankAccountCreationRequestDto.getDni());
+        Mono<Client> clienteFoundByDniOrRuc = findOrCreateClientByDniOrRuc(bankAccountCreationRequestDto.getClientType(),bankAccountCreationRequestDto.getDni(),bankAccountCreationRequestDto.getRucCompany());
         return validateCreateBankAccountDto(bankAccountCreationRequestDto).then(
-                clientFoundByDni.hasElement()
-        ).flatMap(exist -> exist.booleanValue() ? clientFoundByDni : createClient(
-            bankAccountCreationRequestDto.getDni(), bankAccountCreationRequestDto.getFirstName(),
-            bankAccountCreationRequestDto.getLastName(), bankAccountCreationRequestDto.getRucCompany()
-        ))
-        .zipWith(bankAccountService.createBankAccount(bankAccountCreationRequestDto.getDni(), bankAccountCreationRequestDto.getBankAccountName(), bankAccountCreationRequestDto.getRucCompany()))
-        .flatMap(tuple -> addBankAccountToClient(tuple.getT1(),tuple.getT2())
-            .then(createBankAccountCreationResponseDto(tuple.getT1(),tuple.getT2()))
+                        clienteFoundByDniOrRuc.hasElement()
+        ).flatMap(exist -> {
+            if ( !exist.booleanValue()) {
+                return createClient(
+                        bankAccountCreationRequestDto.getDni(), bankAccountCreationRequestDto.getFirstName(),
+                        bankAccountCreationRequestDto.getLastName(), bankAccountCreationRequestDto.getRucCompany(),
+                        bankAccountCreationRequestDto.getClientType()
+                );
+            }else {
+                return clienteFoundByDniOrRuc;
+            }
+
+        })
+        .zipWith(bankAccountService.createBankAccount(bankAccountCreationRequestDto.getDni(), bankAccountCreationRequestDto.getBankAccountName(), bankAccountCreationRequestDto.getRucCompany())
+        )
+        .flatMap(tuple -> addBankAccountToClient(tuple.getT1(), tuple.getT2())
+                .then( createBankAccountCreationResponseDto(tuple.getT1(), tuple.getT2()))
         )
         .onErrorResume(ex -> {
             log.error(ex.getMessage());
@@ -67,7 +85,18 @@ public class ClientServiceImpl implements ClientService {
             );
         });
     }
-    private Mono<Void> addBankAccountToClient(Client client, BankAccount bankAccount) {
+
+    private Mono<Client> findOrCreateClientByDniOrRuc(String clientType, String dni, String rucCompany) {
+        Mono<Client> clientFound;
+        if ( clientType.equals("Personal")){
+            clientFound = clientRepository.findByDni(dni);
+        }else{
+            clientFound = clientRepository.findByRucCompany(rucCompany);
+        }
+        return clientFound;
+    }
+
+    public Mono<Void> addBankAccountToClient(Client client, BankAccount bankAccount) {
         return Mono.just(client)
                 .flatMap(clientToSaved -> {
                     if (clientToSaved.getBankAccounts() == null) {
@@ -78,7 +107,7 @@ public class ClientServiceImpl implements ClientService {
                 })
                 .then();
     }
-    Mono<ResponseEntity<BankAccountCreationResponseDto>> createBankAccountCreationResponseDto(Client client, BankAccount bankAccount){
+    public Mono<ResponseEntity<BankAccountCreationResponseDto>> createBankAccountCreationResponseDto(Client client, BankAccount bankAccount){
         BankAccountCreationResponseDto response = BankAccountCreationResponseDto.builder()
                 .client(client)
                 .bankAccount(bankAccount)
@@ -107,16 +136,18 @@ public class ClientServiceImpl implements ClientService {
                         }
                     });
         }
+
         return Mono.empty();
     }
 
     @Override
-    public Mono<Client> createClient(String dni, String firstName, String lastName, String rucCompany) {
+    public Mono<Client> createClient(String dni, String firstName, String lastName, String rucCompany,String clientType) {
         return Mono.just(Client.builder()
                         .dni(dni)
                         .firstName(firstName)
                         .lastname(lastName)
                         .rucCompany(rucCompany)
+                        .clientType(clientType)
                         .build())
                 .flatMap(clientRepository::save);
     }
@@ -130,13 +161,15 @@ public class ClientServiceImpl implements ClientService {
         credit.setDni(creditDto.getDni());
         credit.setRucCompany(creditDto.getCompanyRuc());
 
-        Mono<Client>  clientFoundByDni = clientRepository.findByRucCompany(credit.getRucCompany());
+        Mono<Client> clienteFoundByDniOrRuc = findOrCreateClientByDniOrRuc(creditDto.getCreditType(),creditDto.getDni(),creditDto.getCompanyRuc());
+
+        if ( !clienteFoundByDniOrRuc.hasElement().block() )  throw new BadRequest("el cliente no existe");
 
         return creditRepository.save(credit)
-                .flatMap(creditoCreado -> {
-                    clientFoundByDni.subscribe(cliente-> {
-                        log.info(cliente.toString());
-                        log.info("entro aqui");
+                .flatMap(creditoCreado ->
+                {
+                    clienteFoundByDniOrRuc.subscribe(cliente-> {
+
                         if (cliente.getCredits()==null){
                             cliente.setCredits(new ArrayList<>());
                         }
@@ -150,5 +183,6 @@ public class ClientServiceImpl implements ClientService {
                         ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build())
                 );
     }
+
 
 }
