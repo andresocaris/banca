@@ -3,7 +3,7 @@ package com.ao.banca.dto.request;
 import lombok.Data;
 
 @Data
-public class CreditoDto {
+public class CreditDto {
     private String id;
     private String creditType;
     private String companyRuc;
