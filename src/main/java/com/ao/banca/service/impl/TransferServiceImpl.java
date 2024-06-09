@@ -12,6 +12,7 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
@@ -35,6 +36,14 @@ public class TransferServiceImpl implements TransferService {
                 .flatMap(bankTransferData->Mono.just(ResponseEntity.ok(bankTransferData)))
                 .switchIfEmpty(Mono.error(new BadRequest("The account does not exist")));
     }
+
+    @Override
+    public Mono<ResponseEntity<Flux<Object>>> findTransfersByDniorRucByAccountNumber(String dniOrRuc,String bankAccountNumber) {
+        return bankTransferRepository.findByBankAccountNumberOrigin(bankAccountNumber)
+                .collectList()
+                .map(list -> ResponseEntity.ok(Flux.fromIterable(list)));
+    }
+
     private Mono<Boolean> validateTransfer(BankTransferRequestDto bankTransferRequestDto) {
 
         Mono<BankAccount> bankAccountMono = bankAccountRepository.findByBankAccountNumber(bankTransferRequestDto.getBankAccountNumberDestination());
